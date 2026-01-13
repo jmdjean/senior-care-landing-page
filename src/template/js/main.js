@@ -441,7 +441,198 @@
     }; // end ssAlertBoxes
 
 
-    /* Back to Top
+   /* visit form
+    * ------------------------------------------------------ */
+    const ssVisitForm = function() {
+
+        const form = document.querySelector('#visit-form');
+        if (!form) return;
+
+        const dateSelect = form.querySelector('#visit-date');
+        const timeSelect = form.querySelector('#visit-time');
+        const statusBox = form.querySelector('.s-footer__visit-status');
+        const submitButton = form.querySelector('button[type="submit"]');
+        const nameInput = form.querySelector('#visit-name');
+        const phoneInput = form.querySelector('#visit-phone');
+        const noteInput = form.querySelector('#visit-note');
+        const headquarterSelect = form.querySelector('#visit-headquarter');
+        const API_BASE = '/api/calendar';
+        const HEADQUARTER_ID = 1;
+        const AVAILABILITY_USER_ID = 'landing-page-admin'; // ajuste para um usuário Admin ou Manager
+        let slots = [];
+
+        if (!(dateSelect && timeSelect && submitButton && nameInput && phoneInput && headquarterSelect)) return;
+
+        const setStatus = function(message, type = 'info') {
+            if (!statusBox) return;
+            statusBox.textContent = message || '';
+            statusBox.classList.remove('is-success', 'is-error');
+            if (type === 'success') statusBox.classList.add('is-success');
+            if (type === 'error') statusBox.classList.add('is-error');
+        };
+
+        const setLoading = function(isLoading) {
+            if (!submitButton) return;
+            submitButton.disabled = isLoading;
+            submitButton.textContent = isLoading ? 'Enviando...' : 'Enviar';
+        };
+
+        const buildOption = function(value, label, placeholder = false) {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = label;
+            if (placeholder) {
+                option.disabled = true;
+                option.selected = true;
+                option.hidden = true;
+            }
+            return option;
+        };
+
+        const populateDates = function() {
+            if (!dateSelect || !timeSelect) return;
+
+            dateSelect.innerHTML = '';
+            dateSelect.append(buildOption('', 'Selecione a data', true));
+
+            const uniqueDates = [...new Set(slots.map((slot) => slot.date))];
+            uniqueDates.forEach(function(dateValue) {
+                const label = new Intl.DateTimeFormat('pt-BR', {
+                    weekday : 'short',
+                    day     : '2-digit',
+                    month   : 'short'
+                }).format(new Date(dateValue));
+                dateSelect.append(buildOption(dateValue, label));
+            });
+
+            dateSelect.disabled = uniqueDates.length === 0;
+
+            timeSelect.innerHTML = '';
+            timeSelect.append(buildOption('', 'Selecione a data', true));
+            timeSelect.disabled = true;
+
+            if (!uniqueDates.length) {
+                dateSelect.firstElementChild.textContent = 'Sem datas disponiveis no momento';
+            }
+        };
+
+        const populateTimes = function(selectedDate) {
+            if (!timeSelect) return;
+
+            timeSelect.innerHTML = '';
+            timeSelect.append(buildOption('', 'Selecione o horario', true));
+
+            const timesForDate = slots.filter(function(slot) {
+                return slot.date === selectedDate;
+            });
+
+            timesForDate.forEach(function(slot) {
+                timeSelect.append(buildOption(slot.time, slot.time));
+            });
+
+            timeSelect.disabled = !timesForDate.length;
+
+            if (!timesForDate.length) {
+                timeSelect.firstElementChild.textContent = 'Sem horarios livres nessa data';
+            }
+        };
+
+        const fetchAvailability = async function() {
+            if (!dateSelect || !timeSelect) return;
+
+            setStatus('Buscando horários disponíveis...');
+            const selectedHeadquarter = Number((headquarterSelect && headquarterSelect.value) || HEADQUARTER_ID);
+
+            try {
+                const params = new URLSearchParams({
+                    headquarterId : selectedHeadquarter
+                });
+
+                const response = await fetch(`${API_BASE}/availability?${params.toString()}`, {
+                    headers : {
+                        'x-user-id' : AVAILABILITY_USER_ID
+                    }
+                });
+
+                if (!response.ok) throw new Error('Erro ao carregar disponibilidade');
+
+                const data = await response.json();
+                slots = Array.isArray(data.slots) ? data.slots : [];
+
+                populateDates();
+
+                if (!slots.length) {
+                    setStatus('Sem datas disponíveis nos próximos dias. Tente novamente mais tarde.', 'error');
+                } else {
+                    setStatus('Datas carregadas. Escolha a que preferir.');
+                }
+
+            } catch (error) {
+                setStatus('Não foi possível carregar os horários. Tente novamente em instantes.', 'error');
+            }
+        };
+
+        dateSelect.addEventListener('change', function(event) {
+            populateTimes(event.target.value);
+        });
+
+        headquarterSelect.addEventListener('change', function() {
+            fetchAvailability();
+        });
+
+        form.addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            if (!dateSelect.value || !timeSelect.value) {
+                setStatus('Escolha uma data e horário para agendar.', 'error');
+                return;
+            }
+
+            const payload = {
+                nome       : nameInput ? nameInput.value.trim() : '',
+                observacao : noteInput ? noteInput.value.trim() : '',
+                data       : dateSelect.value,
+                hora       : timeSelect.value,
+                celular    : phoneInput ? phoneInput.value.trim() : '',
+                sedeId     : Number((headquarterSelect && headquarterSelect.value) || HEADQUARTER_ID)
+            };
+
+            if (!payload.nome || !payload.celular) {
+                setStatus('Preencha nome e celular para continuarmos.', 'error');
+                return;
+            }
+
+            try {
+                setLoading(true);
+                setStatus('Enviando seu pedido...');
+
+                const response = await fetch(`${API_BASE}/commitments-landing-page`, {
+                    method  : 'POST',
+                    headers : {
+                        'Content-Type' : 'application/json',
+                        'x-user-id'    : AVAILABILITY_USER_ID
+                    },
+                    body : JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error('Falha ao enviar');
+
+                setStatus('Pedido de visita enviado com sucesso! Em breve entraremos em contato para confirmar.', 'success');
+                form.reset();
+                populateDates();
+            } catch (error) {
+                setStatus('Não foi possível enviar agora. Confira os dados ou tente novamente.', 'error');
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        fetchAvailability();
+
+    }; // end ssVisitForm
+
+
+   /* Back to Top
     * ------------------------------------------------------ */
     const ssBackToTop = function() {
 
@@ -520,6 +711,7 @@
         ssMailChimpForm();
         ssLightbox();
         ssAlertBoxes();
+        ssVisitForm();
         ssBackToTop();
         ssMoveTo();
 
