@@ -1,0 +1,8 @@
+services:
+  - type: static
+    name: senior-care-landing-page
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist/senior-care-landing-page/browser
+    routes:
+      - src: /.*
+        dest: /index.html
