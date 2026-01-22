@@ -613,50 +613,86 @@ Com uma equipe dedicada, criamos um lar seguro, humano e cheio de afeto para que
                         <div class="s-footer__visit-head">
                             <h3 class="title text-display-1">Agende uma visita</h3>
                             <p class="desc">Escolha um horário disponível e nos conte como podemos ajudar.</p>
+                            @if (isLoadingHeadquarters) {
+                            <p class="s-footer__visit-loading">Carregando... Aguarde alguns instantes (primeiro acesso pode demorar).</p>
+                            }
                         </div>
-                        <form id="visit-form" class="s-footer__visit-form">
+                        <form id="visit-form" class="s-footer__visit-form" [formGroup]="visitForm" (ngSubmit)="onSubmit()">
                             <div class="s-footer__visit-grid">
                                 <div class="s-footer__visit-field">
                                     <label for="visit-name">Nome completo</label>
-                                    <input type="text" id="visit-name" name="nome" placeholder="Seu nome" required>
+                                    <input type="text" id="visit-name" formControlName="name" placeholder="Seu nome" required>
+                                    @if (visitForm.get('name')?.invalid && visitForm.get('name')?.touched) {
+                                    <span class="s-footer__visit-error">Nome deve ter pelo menos 3 caracteres</span>
+                                    }
                                 </div>
                                 <div class="s-footer__visit-field">
                                     <label for="visit-phone">Celular</label>
-                                    <input type="tel" id="visit-phone" name="celular" placeholder="(11) 90000-0000" required>
+                                    <input type="tel" id="visit-phone" formControlName="phone" placeholder="(11) 99999-9999" (input)="formatPhone($event)" required>
+                                    @if (visitForm.get('phone')?.invalid && visitForm.get('phone')?.touched) {
+                                    <span class="s-footer__visit-error">Formato: (11) 99999-9999</span>
+                                    }
                                 </div>
                                 <div class="s-footer__visit-field">
                                     <label for="visit-headquarter">Sede</label>
                                     <div class="ss-custom-select">
-                                        <select id="visit-headquarter" name="sedeId">
-                                            <option value="1" selected>Casa Verde</option>
+                                        <select id="visit-headquarter" formControlName="headquarterId" required>
+                                            <option value="" disabled selected>Selecione uma sede</option>
+                                            @for (hq of headquarters; track hq.id) {
+                                            <option [value]="hq.id">{{ hq.name }}</option>
+                                            }
                                         </select>
                                     </div>
                                 </div>
                                 <div class="s-footer__visit-field">
                                     <label for="visit-date">Data desejada</label>
                                     <div class="ss-custom-select">
-                                        <select id="visit-date" name="data" required>
-                                            <option value="" disabled selected hidden>Carregando datas...</option>
+                                        <select id="visit-date" formControlName="date" required [attr.disabled]="!visitForm.get('headquarterId')?.value ? '' : null">
+                                            @if (!visitForm.get('headquarterId')?.value) {
+                                            <option value="" disabled selected>Selecione a sede primeiro</option>
+                                            } @else {
+                                            <option value="" disabled selected>Selecione uma data</option>
+                                            @for (date of availableDates; track date) {
+                                            <option [value]="date">{{ formatDate(date) }}</option>
+                                            }
+                                            }
                                         </select>
                                     </div>
                                 </div>
                                 <div class="s-footer__visit-field">
                                     <label for="visit-time">Horário</label>
                                     <div class="ss-custom-select">
-                                        <select id="visit-time" name="hora" required disabled>
-                                            <option value="" disabled selected hidden>Selecione a data</option>
+                                        <select id="visit-time" formControlName="time" required [attr.disabled]="!visitForm.get('date')?.value || loadingSlots ? '' : null">
+                                            @if (loadingSlots) {
+                                            <option value="" disabled selected>Carregando...</option>
+                                            } @else if (!visitForm.get('date')?.value) {
+                                            <option value="" disabled selected>Selecione a data primeiro</option>
+                                            } @else if (availableSlots.length === 0) {
+                                            <option value="" disabled selected>Nenhum horário disponível</option>
+                                            } @else {
+                                            <option value="" disabled selected>Selecione um horário</option>
+                                            @for (slot of availableSlots; track slot) {
+                                            <option [value]="slot">{{ slot }}</option>
+                                            }
+                                            }
                                         </select>
                                     </div>
                                 </div>
                                 <div class="s-footer__visit-field">
                                     <label for="visit-note">Observação</label>
-                                    <input type="text" id="visit-note" name="observacao" placeholder="Informe necessidades específicas, acompanhantes, etc.">
+                                    <input type="text" id="visit-note" formControlName="note" placeholder="Informe necessidades específicas, acompanhantes, etc.">
                                 </div>
                             </div>
                             <div class="s-footer__contact-btn">
-                                <button type="submit" class="btn btn--primary u-fullwidth">Enviar</button>
+                                <button type="submit" class="btn btn--primary u-fullwidth" [disabled]="isSubmitting || visitForm.invalid">
+                                    {{ isSubmitting ? 'Enviando...' : 'Enviar' }}
+                                </button>
                             </div>
-                            <div class="s-footer__visit-status" role="status" aria-live="polite"></div>
+                            @if (submitStatus) {
+                            <div class="s-footer__visit-status" role="status" aria-live="polite" [class.success]="submitStatus.type === 'success'" [class.error]="submitStatus.type === 'error'">
+                                {{ submitStatus.message }}
+                            </div>
+                            }
                         </form>
                     </div>
                 </div>

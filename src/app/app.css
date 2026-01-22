@@ -1,0 +1,51 @@
+/* Visit Form Styles */
+.s-footer__visit-status {
+  margin-top: 1.5rem;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.s-footer__visit-status.success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.s-footer__visit-status.error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.s-footer__visit-error {
+  display: block;
+  color: #dc3545;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.s-footer__visit-loading {
+  color: #666;
+  font-style: italic;
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+}
+
+select:disabled,
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+button:disabled {
+  background-color: #999 !important;
+}
+
+/* Ensure form inputs have consistent styling when invalid and touched */
+.s-footer__visit-form input.ng-invalid.ng-touched,
+.s-footer__visit-form select.ng-invalid.ng-touched {
+  border-color: #dc3545;
+}
