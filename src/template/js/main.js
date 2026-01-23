@@ -459,12 +459,57 @@
         const phoneInput = form.querySelector('#visit-phone');
         const noteInput = form.querySelector('#visit-note');
         const headquarterSelect = form.querySelector('#visit-headquarter');
-        const API_BASE = '/api/calendar';
+        const API_BASE = 'https://senior-care-v2-backoffice-dev.onrender.com/api/calendar';
+        const HEADQUARTERS_API = 'https://senior-care-v2-backoffice-dev.onrender.com/api/headquarters';
         const HEADQUARTER_ID = 1;
         const AVAILABILITY_USER_ID = 'landing-page-admin'; // ajuste para um usuário Admin ou Manager
         let slots = [];
 
         if (!(dateSelect && timeSelect && submitButton && nameInput && phoneInput && headquarterSelect)) return;
+
+        const fetchHeadquarters = async function() {
+            try {
+                const response = await fetch(HEADQUARTERS_API, {
+                    headers: {
+                        'x-user-id': AVAILABILITY_USER_ID
+                    }
+                });
+
+                if (!response.ok) throw new Error('Erro ao carregar sedes');
+
+                const data = await response.json();
+                const headquarters = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
+
+                // Limpar opções existentes (mantendo a primeira)
+                while (headquarterSelect.options.length > 1) {
+                    headquarterSelect.remove(1);
+                }
+
+                // Adicionar sedes
+                headquarters.forEach(function(hq) {
+                    const option = document.createElement('option');
+                    option.value = hq.id;
+                    option.textContent = hq.name;
+                    headquarterSelect.appendChild(option);
+                });
+
+                if (headquarters.length === 0) {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'Nenhuma sede disponível';
+                    option.disabled = true;
+                    headquarterSelect.appendChild(option);
+                }
+
+            } catch (error) {
+                console.error('Erro ao carregar sedes:', error);
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Erro ao carregar sedes';
+                option.disabled = true;
+                headquarterSelect.appendChild(option);
+            }
+        };
 
         const setStatus = function(message, type = 'info') {
             if (!statusBox) return;
@@ -630,6 +675,7 @@
             }
         });
 
+        fetchHeadquarters();
         fetchAvailability();
 
     }; // end ssVisitForm
