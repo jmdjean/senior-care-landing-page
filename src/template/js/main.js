@@ -537,51 +537,72 @@
             return option;
         };
 
-        const populateDates = function() {
+        const generateNext21Days = function() {
+            const dates = [];
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            for (let i = 1; i <= 21; i++) {
+                const date = new Date(today);
+                date.setDate(date.getDate() + i);
+                const yyyy = date.getFullYear();
+                const mm = String(date.getMonth() + 1).padStart(2, '0');
+                const dd = String(date.getDate()).padStart(2, '0');
+                dates.push(`${yyyy}-${mm}-${dd}`);
+            }
+            return dates;
+        };
+
+        const populateDates = function(datesWithAvailability) {
             if (!dateSelect || !timeSelect) return;
 
             dateSelect.innerHTML = '';
             dateSelect.append(buildOption('', 'Selecione a data', true));
 
-            const uniqueDates = [...new Set(slots.map((slot) => slot.date))];
-            uniqueDates.forEach(function(dateValue) {
+            const availableDates = datesWithAvailability.filter(function(item) {
+                return item.availableSlots && item.availableSlots.length > 0;
+            });
+
+            availableDates.forEach(function(item) {
                 const label = new Intl.DateTimeFormat('pt-BR', {
                     weekday : 'short',
                     day     : '2-digit',
                     month   : 'short'
-                }).format(new Date(dateValue));
-                dateSelect.append(buildOption(dateValue, label));
+                }).format(new Date(item.date + 'T00:00:00'));
+                dateSelect.append(buildOption(item.date, label));
             });
 
-            dateSelect.disabled = uniqueDates.length === 0;
+            dateSelect.disabled = availableDates.length === 0;
 
             timeSelect.innerHTML = '';
             timeSelect.append(buildOption('', 'Selecione a data', true));
             timeSelect.disabled = true;
 
-            if (!uniqueDates.length) {
-                dateSelect.firstElementChild.textContent = 'Sem datas disponiveis no momento';
+            if (!availableDates.length) {
+                dateSelect.firstElementChild.textContent = 'Sem datas disponíveis nos próximos 21 dias';
             }
         };
 
-        const populateTimes = function(selectedDate) {
+        const populateTimes = function(selectedDate, datesWithAvailability) {
             if (!timeSelect) return;
 
             timeSelect.innerHTML = '';
-            timeSelect.append(buildOption('', 'Selecione o horario', true));
+            timeSelect.append(buildOption('', 'Selecione o horário', true));
 
-            const timesForDate = slots.filter(function(slot) {
-                return slot.date === selectedDate;
+            const dateData = datesWithAvailability.find(function(item) {
+                return item.date === selectedDate;
             });
 
-            timesForDate.forEach(function(slot) {
-                timeSelect.append(buildOption(slot.time, slot.time));
-            });
+            if (dateData && dateData.availableSlots) {
+                dateData.availableSlots.forEach(function(time) {
+                    timeSelect.append(buildOption(time, time));
+                });
+            }
 
-            timeSelect.disabled = !timesForDate.length;
+            timeSelect.disabled = !dateData || !dateData.availableSlots || dateData.availableSlots.length === 0;
 
-            if (!timesForDate.length) {
-                timeSelect.firstElementChild.textContent = 'Sem horarios livres nessa data';
+            if (!timeSelect.disabled && dateData.availableSlots.length === 0) {
+                timeSelect.firstElementChild.textContent = 'Sem horários livres nessa data';
             }
         };
 
@@ -592,36 +613,53 @@
             const selectedHeadquarter = Number((headquarterSelect && headquarterSelect.value) || HEADQUARTER_ID);
 
             try {
-                const params = new URLSearchParams({
-                    headquarterId : selectedHeadquarter
-                });
+                const next21Days = generateNext21Days();
+                const datesWithAvailability = [];
 
-                const response = await fetch(`${API_BASE}/availability?${params.toString()}`, {
-                    headers : {
-                        'x-user-id' : AVAILABILITY_USER_ID
+                // Chamar API para cada data
+                for (let i = 0; i < next21Days.length; i++) {
+                    const date = next21Days[i];
+                    const params = new URLSearchParams({
+                        headquarterId : selectedHeadquarter,
+                        date : date
+                    });
+
+                    const response = await fetch(`${API_BASE}/availability?${params.toString()}`, {
+                        headers : {
+                            'x-user-id' : AVAILABILITY_USER_ID
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        datesWithAvailability.push({
+                            date : date,
+                            availableSlots : data.availableSlots || [],
+                            bookedSlots : data.bookedSlots || []
+                        });
                     }
-                });
+                }
 
-                if (!response.ok) throw new Error('Erro ao carregar disponibilidade');
+                populateDates(datesWithAvailability);
 
-                const data = await response.json();
-                slots = Array.isArray(data.slots) ? data.slots : [];
-
-                populateDates();
-
-                if (!slots.length) {
-                    setStatus('Sem datas disponíveis nos próximos dias. Tente novamente mais tarde.', 'error');
+                if (!datesWithAvailability.some(function(item) {
+                    return item.availableSlots && item.availableSlots.length > 0;
+                })) {
+                    setStatus('Sem datas disponíveis nos próximos 21 dias. Tente novamente mais tarde.', 'error');
                 } else {
                     setStatus('Datas carregadas. Escolha a que preferir.');
                 }
 
+                slots = datesWithAvailability;
+
             } catch (error) {
+                console.error('Erro ao carregar disponibilidade:', error);
                 setStatus('Não foi possível carregar os horários. Tente novamente em instantes.', 'error');
             }
         };
 
         dateSelect.addEventListener('change', function(event) {
-            populateTimes(event.target.value);
+            populateTimes(event.target.value, slots);
         });
 
         headquarterSelect.addEventListener('change', function() {
