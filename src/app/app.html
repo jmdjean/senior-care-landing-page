@@ -625,6 +625,16 @@ Com uma equipe dedicada, criamos um lar seguro, humano e cheio de afeto para que
                             <p class="desc">
                                 {{ isFormLoading ? 'Aguarde um instante enquanto buscamos as sedes e datas disponíveis.' : 'Escolha um horário disponível e nos conte como podemos ajudar.' }}
                             </p>
+                            @if (formLoadError) {
+                            <div class="s-footer__visit-status error" role="alert">
+                                {{ formLoadError }}
+                            </div>
+                            <div class="s-footer__contact-btn">
+                                <button type="button" class="btn btn--stroke u-fullwidth" (click)="retryFormLoad()">
+                                    Tentar novamente
+                                </button>
+                            </div>
+                            }
                         </div>
                         <form id="visit-form" class="s-footer__visit-form" data-managed="angular" [formGroup]="visitForm" (ngSubmit)="onSubmit()" [attr.aria-busy]="isFormLoading ? 'true' : null">
                             <fieldset class="s-footer__visit-fieldset" [disabled]="isFormLoading">

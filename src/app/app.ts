@@ -35,6 +35,10 @@ export class App implements OnInit, AfterViewInit {
   loadingSlots = false;
   isSubmitting = false;
   submitStatus: SubmitStatus | null = null;
+  formLoadError: string | null = null;
+
+  private formLoadTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private readonly FORM_LOAD_TIMEOUT_MS = 35000;
 
   private readonly WORKING_HOURS = [
     '09:00',
@@ -98,9 +102,16 @@ export class App implements OnInit, AfterViewInit {
 
   private loadHeadquarters(): void {
     this.isLoadingHeadquarters = true;
+    this.formLoadError = null;
+    this.startFormLoadTimeout();
     this.apiService
       .getHeadquarters()
-      .pipe(finalize(() => (this.isLoadingHeadquarters = false)))
+      .pipe(
+        finalize(() => {
+          this.isLoadingHeadquarters = false;
+          this.stopFormLoadTimeout();
+        })
+      )
       .subscribe({
         next: (hqs) => {
           this.headquarters = hqs;
@@ -108,15 +119,23 @@ export class App implements OnInit, AfterViewInit {
         error: (err) => {
           console.error('Erro ao carregar sedes:', err);
           this.headquarters = [];
+          this.formLoadError = 'Não foi possível carregar as sedes. Tente novamente.';
         },
       });
   }
 
   private loadCalendarEvents(headquarterId: number): void {
     this.isLoadingCalendarEvents = true;
+    this.formLoadError = null;
+    this.startFormLoadTimeout();
     this.apiService
       .getCalendarEvents(headquarterId)
-      .pipe(finalize(() => (this.isLoadingCalendarEvents = false)))
+      .pipe(
+        finalize(() => {
+          this.isLoadingCalendarEvents = false;
+          this.stopFormLoadTimeout();
+        })
+      )
       .subscribe({
         next: (events) => {
           this.calendarEvents = events;
@@ -128,12 +147,41 @@ export class App implements OnInit, AfterViewInit {
         error: (err) => {
           console.error('Erro ao carregar eventos:', err);
           this.calendarEvents = [];
+          this.formLoadError = 'Não foi possível carregar as datas disponíveis. Tente novamente.';
         },
       });
   }
 
   get isFormLoading(): boolean {
     return this.isLoadingHeadquarters || this.isLoadingCalendarEvents;
+  }
+
+  retryFormLoad(): void {
+    this.formLoadError = null;
+    this.loadHeadquarters();
+    const headquarterId = this.visitForm?.get('headquarterId')?.value;
+    if (headquarterId) {
+      this.loadCalendarEvents(+headquarterId);
+    }
+  }
+
+  private startFormLoadTimeout(): void {
+    if (this.formLoadTimeoutId) return;
+    this.formLoadTimeoutId = setTimeout(() => {
+      if (this.isFormLoading) {
+        this.isLoadingHeadquarters = false;
+        this.isLoadingCalendarEvents = false;
+        this.formLoadError = 'Não foi possível carregar os dados do formulário. Verifique sua conexão e tente novamente.';
+      }
+      this.formLoadTimeoutId = null;
+    }, this.FORM_LOAD_TIMEOUT_MS);
+  }
+
+  private stopFormLoadTimeout(): void {
+    if (this.formLoadTimeoutId && !this.isFormLoading) {
+      clearTimeout(this.formLoadTimeoutId);
+      this.formLoadTimeoutId = null;
+    }
   }
 
   private generateAvailableDates(): void {
