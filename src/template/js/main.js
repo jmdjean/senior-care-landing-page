@@ -450,6 +450,7 @@
 
         const form = document.querySelector('#visit-form');
         if (!form) return;
+        if (form.getAttribute('data-managed') === 'angular') return;
 
         const dateSelect = form.querySelector('#visit-date');
         const timeSelect = form.querySelector('#visit-time');

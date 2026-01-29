@@ -626,7 +626,7 @@ Com uma equipe dedicada, criamos um lar seguro, humano e cheio de afeto para que
                                 {{ isFormLoading ? 'Aguarde um instante enquanto buscamos as sedes e datas disponíveis.' : 'Escolha um horário disponível e nos conte como podemos ajudar.' }}
                             </p>
                         </div>
-                        <form id="visit-form" class="s-footer__visit-form" [formGroup]="visitForm" (ngSubmit)="onSubmit()" [attr.aria-busy]="isFormLoading ? 'true' : null">
+                        <form id="visit-form" class="s-footer__visit-form" data-managed="angular" [formGroup]="visitForm" (ngSubmit)="onSubmit()" [attr.aria-busy]="isFormLoading ? 'true' : null">
                             <fieldset class="s-footer__visit-fieldset" [disabled]="isFormLoading">
                             <div class="s-footer__visit-grid">
                                 <div class="s-footer__visit-field">
