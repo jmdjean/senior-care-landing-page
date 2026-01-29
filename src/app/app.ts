@@ -31,6 +31,7 @@ export class App implements OnInit, AfterViewInit {
   calendarEvents: CalendarEvent[] = [];
 
   isLoadingHeadquarters = true;
+  isLoadingCalendarEvents = false;
   loadingSlots = false;
   isSubmitting = false;
   submitStatus: SubmitStatus | null = null;
@@ -112,19 +113,27 @@ export class App implements OnInit, AfterViewInit {
   }
 
   private loadCalendarEvents(headquarterId: number): void {
-    this.apiService.getCalendarEvents(headquarterId).subscribe({
-      next: (events) => {
-        this.calendarEvents = events;
-        const dateValue = this.visitForm.get('date')?.value;
-        if (dateValue) {
-          this.calculateAvailableSlots(dateValue);
-        }
-      },
-      error: (err) => {
-        console.error('Erro ao carregar eventos:', err);
-        this.calendarEvents = [];
-      },
-    });
+    this.isLoadingCalendarEvents = true;
+    this.apiService
+      .getCalendarEvents(headquarterId)
+      .pipe(finalize(() => (this.isLoadingCalendarEvents = false)))
+      .subscribe({
+        next: (events) => {
+          this.calendarEvents = events;
+          const dateValue = this.visitForm.get('date')?.value;
+          if (dateValue) {
+            this.calculateAvailableSlots(dateValue);
+          }
+        },
+        error: (err) => {
+          console.error('Erro ao carregar eventos:', err);
+          this.calendarEvents = [];
+        },
+      });
+  }
+
+  get isFormLoading(): boolean {
+    return this.isLoadingHeadquarters || this.isLoadingCalendarEvents;
   }
 
   private generateAvailableDates(): void {

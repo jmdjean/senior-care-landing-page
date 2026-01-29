@@ -5,6 +5,14 @@
     <div id="preloader">
         <div id="loader"></div>
     </div>
+    @if (isFormLoading) {
+    <div class="app-loading-overlay" role="status" aria-live="polite" aria-label="Carregando dados do formulário">
+        <div class="app-loading-card">
+            <div class="app-loading-spinner"></div>
+            <p>Carregando dados do formulário...</p>
+        </div>
+    </div>
+    }
 
 
     <!-- page wrap
@@ -611,13 +619,15 @@ Com uma equipe dedicada, criamos um lar seguro, humano e cheio de afeto para que
                 <div class="column lg-12">
                     <div class="s-footer__visit-card">
                         <div class="s-footer__visit-head">
-                            <h3 class="title text-display-1">Agende uma visita</h3>
-                            <p class="desc">Escolha um horário disponível e nos conte como podemos ajudar.</p>
-                            @if (isLoadingHeadquarters) {
-                            <p class="s-footer__visit-loading">Carregando... Aguarde alguns instantes (primeiro acesso pode demorar).</p>
-                            }
+                            <h3 class="title text-display-1">
+                                {{ isFormLoading ? 'Carregando dados do formulário...' : 'Agende uma visita' }}
+                            </h3>
+                            <p class="desc">
+                                {{ isFormLoading ? 'Aguarde um instante enquanto buscamos as sedes e datas disponíveis.' : 'Escolha um horário disponível e nos conte como podemos ajudar.' }}
+                            </p>
                         </div>
-                        <form id="visit-form" class="s-footer__visit-form" [formGroup]="visitForm" (ngSubmit)="onSubmit()">
+                        <form id="visit-form" class="s-footer__visit-form" [formGroup]="visitForm" (ngSubmit)="onSubmit()" [attr.aria-busy]="isFormLoading ? 'true' : null">
+                            <fieldset class="s-footer__visit-fieldset" [disabled]="isFormLoading">
                             <div class="s-footer__visit-grid">
                                 <div class="s-footer__visit-field">
                                     <label for="visit-name">Nome completo</label>
@@ -684,8 +694,8 @@ Com uma equipe dedicada, criamos um lar seguro, humano e cheio de afeto para que
                                 </div>
                             </div>
                             <div class="s-footer__contact-btn">
-                                <button type="submit" class="btn btn--primary u-fullwidth" [disabled]="isSubmitting || visitForm.invalid">
-                                    {{ isSubmitting ? 'Enviando...' : 'Enviar' }}
+                                <button type="submit" class="btn btn--primary u-fullwidth" [disabled]="isFormLoading || isSubmitting || visitForm.invalid">
+                                    {{ isSubmitting ? 'Enviando...' : (isFormLoading ? 'Carregando...' : 'Enviar') }}
                                 </button>
                             </div>
                             @if (submitStatus) {
@@ -693,6 +703,7 @@ Com uma equipe dedicada, criamos um lar seguro, humano e cheio de afeto para que
                                 {{ submitStatus.message }}
                             </div>
                             }
+                            </fieldset>
                         </form>
                     </div>
                 </div>
